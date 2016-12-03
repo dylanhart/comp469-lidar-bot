@@ -47,6 +47,7 @@ class Watchdog(threading.Thread):
 
     def stop(self):
         self.terminated = True
+        self.event.set()
         self.join()
 
     def run(self):
