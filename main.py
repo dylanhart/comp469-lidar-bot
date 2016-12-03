@@ -90,19 +90,22 @@ watchdog = Watchdog()
 
 # drive!
 watchdog.start()
-while True:
-    bot.update(PBR)
+try:
+    while True:
+        bot.update(PBR)
 
-    if watchdog.timed_out:
-        print('watchdog timed out, quitting')
-        break
-    else:
-        watchdog.feed()
+        if watchdog.timed_out:
+            print('watchdog timed out, quitting')
+            break
+        else:
+            watchdog.feed()
+except KeyboardInterrupt:
+    print('shutting down.')
+finally:
+    # cleanup
+    watchdog.stop()
 
-# cleanup
-watchdog.stop()
+    # kill motors
+    PBR.MotorsOff()
 
-# kill motors
-PBR.MotorsOff()
-
-print('exiting.')
+    print('exiting.')
