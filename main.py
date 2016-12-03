@@ -33,13 +33,14 @@ PBR.ResetEpo()
 
 # watchdog thread to kill motors if program goes unresponsive
 class Watchdog(threading.Thread):
+    timed_out = False
+
     def __init__(self):
         super(Watchdog, self).__init__()
         self.event = threading.Event()
         self.terminated = False
         self.start()
         self.timestamp = time.time()
-        self.timed_out = True
 
     def feed(self):
         self.event.set()
@@ -89,7 +90,6 @@ bot = LidarBot(PBR, ai, map, config)
 watchdog = Watchdog()
 
 # drive!
-watchdog.start()
 try:
     while True:
         bot.update()
