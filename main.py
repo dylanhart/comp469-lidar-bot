@@ -85,14 +85,14 @@ else:
     ai = ai_module.AI()
 
 # setup bot driver
-bot = LidarBot(ai, map, config)
+bot = LidarBot(PBR, ai, map, config)
 watchdog = Watchdog()
 
 # drive!
 watchdog.start()
 try:
     while True:
-        bot.update(PBR)
+        bot.update()
 
         if watchdog.timed_out:
             print('watchdog timed out, quitting')
