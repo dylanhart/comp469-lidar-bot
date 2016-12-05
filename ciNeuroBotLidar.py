@@ -295,43 +295,4 @@ class Lidar:
             lidarOut = self.lidarBuffer
         
         return lidarOut
-    
-# th = threading.Thread(target=read_Lidar)
-# th.start()
-readLidar()
-# while True:
-#     time.sleep(1)
-#     if visualization:
-#         rate(60) # synchonous repaint at 60fps
-#         checkKeys()
 
-# offset = 140
-
-# def init_view():
-#     if visualization:
-#         from visual import *
-#     # sample and intensity points
-#         point = points(pos=[(0,0,0) for i in range(360)], size=5, color=(0 , 1, 0))
-#         pointb = points(pos=[(0,0,0) for i in range(360)], size=5, color=(0.4, 0, 0))
-#         point2 = points(pos=[(0,0,0) for i in range(360)], size=3, color=(1 , 1, 0))
-#         point2b = points(pos=[(0,0,0) for i in range(360)], size=3, color=(0.4, 0.4, 0))
-#         #lines
-#         outer_line= curve (pos=[(0,0,0) for i in range(360)], size=5, color=(1 , 0, 0))
-#         lines=[curve(pos=[(offset*cos(i* pi / 180.0),0,offset*-sin(i* pi / 180.0)),
-#               (offset*cos(i* pi / 180.0),0,offset*-sin(i* pi / 180.0))],
-#               color=[(0.1, 0.1, 0.2),(1,0,0)]) for i in range(360)]
-#         zero_intensity_ring = ring(pos=(0,0,0), axis=(0,1,0), radius=offset-1, thickness=1,
-#               color = color.yellow)
-
-#         label_speed = label(pos = (0,-500,0), xoffset=1, box=False, opacity=0.1)
-#         label_errors = label(pos = (0,-1000,0), xoffset=1, text="errors: 0", visible = False,
-#               box=False)
-
-#     use_points = True
-#     use_outer_line = False
-#     use_lines = False
-#     use_intensity = True
-
-
-# def gui_update_speed(speed_rpm):
-#     label_speed.text = "RPM : " + str(speed_rpm)
