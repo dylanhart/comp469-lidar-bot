@@ -3,5 +3,5 @@
   "START_POS": [50, 50],
   "START_DIR": [-1,-1],
   "MAP": "map.json",
-  "LIDAR_MODULE": "dummy_lidar"
+  "LIDAR_MODULE": "ciNeuroBotLidar"
 }

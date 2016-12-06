@@ -297,5 +297,5 @@ class Lidar:
             
             lidarOut = self.lidarBuffer
         
-        return lidarOut
+        return [dist for dist, _ in lidarOut]
 
