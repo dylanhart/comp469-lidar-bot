@@ -104,6 +104,7 @@ except KeyboardInterrupt:
     print('shutting down.')
 finally:
     # cleanup
+    bot.stop()
     watchdog.stop()
 
     # kill motors

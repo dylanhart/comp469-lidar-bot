@@ -6,7 +6,7 @@ class PiBorgBot:
 
     def drive(self, left, right):
         self.PBR.SetMotor1(left)
-        self.PBR.SetMotor2(right)
+        self.PBR.SetMotor2(-right)
 
 
 class LidarBot(PiBorgBot):
@@ -20,29 +20,36 @@ class LidarBot(PiBorgBot):
 
     def update(self):
         decision = self.ai.decide(self, self.lidar.get_image(), self.map)
+        print(repr(decision))
 
-        # http://robotpy.readthedocs.io/en/latest/wpilib/RobotDrive.html#wpilib.robotdrive.RobotDrive.arcadeDrive
         speed = decision['speed']
         angle = decision['angle']
-        np.clip(speed, -1, 1)
-        np.clip(angle, -1, 1)
+        speed = np.clip(speed, -1, 1)
+        angle = np.clip(angle, -1, 1)
 
-        if speed > 0:
-            if angle > 0.0:
-                left = speed - angle
-                right = max(speed, angle)
-            else:
-                left = max(speed, -angle)
-                right = speed + angle
-        else:
-            if angle > 0.0:
-                left = -max(-speed, angle)
-                right = speed + angle
-            else:
-                left = speed - angle
-                right = -max(-speed, -angle)
+        left, right = arcade(speed, angle)
 
-        np.clip(left, -1, 1)
-        np.clip(right, -1, 1)
+        left = np.clip(left, -1, 1)
+        right = np.clip(right, -1, 1)
         self.drive(left, right)
+        print('left: {}, right: {}'.format(left, right))
 
+    def stop(self):
+        self.lidar.quit = True
+
+def arcade(speed, angle):
+    # http://robotpy.readthedocs.io/en/latest/wpilib/RobotDrive.html#wpilib.robotdrive.RobotDrive.arcadeDrive
+    if speed > 0:
+        if angle > 0.0:
+            left = speed - angle
+            right = max(speed, angle)
+        else:
+            left = max(speed, -angle)
+            right = speed + angle
+    else:
+        if angle > 0.0:
+            left = -max(-speed, angle)
+            right = speed + angle
+        else:
+            left = speed - angle
+            right = -max(-speed, -angle)

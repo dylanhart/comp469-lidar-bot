@@ -297,5 +297,6 @@ class Lidar:
             
             lidarOut = self.lidarBuffer
         
-        return [dist for dist, _ in lidarOut]
+        out = [a[0] if len(a) > 0 else 0 for a in lidarOut]
+        return out[180:] + out[:180]
 
