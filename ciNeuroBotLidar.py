@@ -61,11 +61,11 @@ class Lidar:
     
     def __init__(self):
         # for Linux it would be something like the following depending on which port USB is connected to:
-        self.com_port = "/dev/ttyUSB0"
+        com_port = "/dev/ttyUSB0"
         # try the command "ls /dev/tty*" to see what's available
         # for Mac OS X, use:
         # com_port = "/dev/cu.usbserial"
-        self.baudrate = 115200
+        baudrate = 115200
         
         self.init_level = 0
         self.index = 0
@@ -76,13 +76,16 @@ class Lidar:
         self.bufferLock = threading.Lock()
         self.ser = serial.Serial(com_port, baudrate)
         self.buffer_filled = threading.Condition(self.bufferLock)
+        self.quit = False
+        self.read_thread = threading.Thread(target=self.readLidar)
+        self.read_thread.start()
 
     def checksum(self, data):
-    """
-    Compute and return the checksum as an int.
-    
-    data -- list of 20 bytes, in the order they arrived in.
-    """
+        """
+        Compute and return the checksum as an int.
+        
+        data -- list of 20 bytes, in the order they arrived in.
+        """
         # make it into a list of 20 integers
         data = list(data)
         # group the data by word, little-endian
@@ -104,29 +107,29 @@ class Lidar:
     def readLidar(self):
 
         nb_errors = 0
-        while True:
+        while not self.quit:
             # try:
             time.sleep(0.00001)  # do not hog the processor power
             
             if self.init_level == 0:
-                b_start = ser.read(1)
-                print("b_start = {0}".format(b_start))
+                b_start = self.ser.read(1)
+                #print("b_start = {0}".format(b_start))
                 b = int.from_bytes(b_start, 'big')
                 # start byte
                 if b == 0xFA:
                     self.init_level = 1
-                    print("got start\n")
+                    #print("got start\n")
                 else:
                     self.init_level = 0
             elif self.init_level == 1:
                 # position index
-                b_index = ser.read(1)
-                print("b_index = {0}".format(b_index))
+                b_index = self.ser.read(1)
+                #print("b_index = {0}".format(b_index))
                 b = int.from_bytes(b_index, 'big')
                 if b >= 0xA0 and b <= 0xF9:
                     self.index = b - 0xA0
                     self.init_level = 2
-                    print("got packet #{0:02x}\n".format(index))
+                    #print("got packet #{0:02x}\n".format(self.index))
                     
                     
                 elif b != 0xFA:
@@ -134,41 +137,41 @@ class Lidar:
             elif self.init_level == 2:
                 # speed
                 # b_speed = [ b for b in ser.read(2)]
-                b_speed = ser.read(2)
+                b_speed = self.ser.read(2)
                 
                 # data
                 # b_data0 = [ b for b in ser.read(4)]
                 # b_data1 = [ b for b in ser.read(4)]
                 # b_data2 = [ b for b in ser.read(4)]
                 # b_data3 = [ b for b in ser.read(4)]
-                b_data0 = ser.read(4)
-                b_data1 = ser.read(4)
-                b_data2 = ser.read(4)
-                b_data3 = ser.read(4)
+                b_data0 = self.ser.read(4)
+                b_data1 = self.ser.read(4)
+                b_data2 = self.ser.read(4)
+                b_data3 = self.ser.read(4)
                 
-                print("data\n")
-                print("data0 = {0}".format(b_data0))
-                print("data1 = {0}".format(b_data1))
-                print("data2 = {0}".format(b_data2))
-                print("data3 = {0}".format(b_data3))
+                #print("data\n")
+                #print("data0 = {0}".format(b_data0))
+                #print("data1 = {0}".format(b_data1))
+                #print("data2 = {0}".format(b_data2))
+                #print("data3 = {0}".format(b_data3))
                 
                 # we need all the data of the packet to verify the checksum
                 all_data = b_start + b_index + b_speed + b_data0 + b_data1 + b_data2 + b_data3
-                print("all_data = {0}".format(all_data))
+                #print("all_data = {0}".format(all_data))
                 
                 # checksum
-                b_checksum = ser.read(2)
-                print("checksum bytes: {0}".format(b_checksum))
+                b_checksum = self.ser.read(2)
+                #print("checksum bytes: {0}".format(b_checksum))
                 # incoming_checksum = int(b_checksum[0]) + (int(b_checksum[1]) << 8)
                 incoming_checksum = int.from_bytes(b_checksum, 'little')
-                print("incoming_checksum = {0}".format(incoming_checksum))
+                #print("incoming_checksum = {0}".format(incoming_checksum))
                 
                 # verify that the received checksum is equal to the one computed from the data
-                calculated_checksum = checksum(all_data)
-                print("calculated_checksum = {0}".format(calculated_checksum))
-                if checksum(all_data) == incoming_checksum:
+                calculated_checksum = self.checksum(all_data)
+                #print("calculated_checksum = {0}".format(calculated_checksum))
+                if self.checksum(all_data) == incoming_checksum:
                     speed_rpm = float(int.from_bytes(b_speed, 'big')) / 64.0
-                    print("speed = {0}".format(speed_rpm))
+                    #print("speed = {0}".format(speed_rpm))
                     # if visualization:
                     #     gui_update_speed(speed_rpm)
                     
@@ -185,12 +188,13 @@ class Lidar:
                     self.lidarBuffer[self.index * 4 + 3] = self.lidarData[self.index * 4 + 3]
                     
                     if (self.index * 4 + 3) == 359:
-                        self.buffer_filled.notify()
+                        with self.buffer_filled:
+                            self.buffer_filled.notify()
                     
                 else:
                     # the checksum does not match, something went wrong...
                     nb_errors += 1
-                    print("wrong checksum nb_errors={0}\n".format(nb_errors))
+                    #print("wrong checksum nb_errors={0}\n".format(nb_errors))
                 # if visualization:
                 #     label_errors.text = "errors: "+str(nb_errors)
                 
@@ -201,8 +205,8 @@ class Lidar:
                 # update_view(index * 4 + 3, [0, 0x80, 0, 0])
                 
                 self.init_level = 0  # reset and wait for the next packet
-                print(self.index)
-                print(self.lidarData)
+                #print(self.index)
+                #print(self.lidarData)
             # return # to test
 
             else:  # default, should never happen...
@@ -212,11 +216,11 @@ class Lidar:
     #     return
 
     def update_view(self, angle, data):
-    """
-    Updates the view of a sample.
-
-    Takes the angle (an int, from 0 to 359) and the list of four bytes of data in the order they arrived.
-    """
+        """
+        Updates the view of a sample.
+        
+        Takes the angle (an int, from 0 to 359) and the list of four bytes of data in the order they arrived.
+        """
         # global offset, use_outer_line, use_line
         # unpack data using the denomination used during the discussions
         # x0 = data[0]
@@ -229,18 +233,17 @@ class Lidar:
         s = -math.sin(angle_rad)
         
         dist_calc_error = (data[1] & 0x80) > 0  # check bit 7 flag
-        if dist_calc_error:
-            print("distance calculation error: {0}\n".format(data[0]))  # error code in data[0]
-            
-        inferior_signal = (data[1] & 0x40) > 0  # check bit 6 flag
-        if inferior_signal:
-            print("inferior signal\n")
+        #if dist_calc_error:
+            #print("distance calculation error: {0}\n".format(data[0]))  # error code in data[0]
         
-
+        inferior_signal = (data[1] & 0x40) > 0  # check bit 6 flag
+        #if inferior_signal:
+            #print("inferior signal\n")
+        
         dist_mm = data[0] | ((data[1] & 0x3f) << 8)  # remove the flags
         quality = data[2] | (data[3] << 8)  # quality is on 16 bits
         
-        # quality = int.from_bytes(data[2:4], 'big')
+        #quality = int.from_bytes(data[2:4], 'big')
         
         self.lidarData[angle] = [dist_mm, quality]
         dist_x = dist_mm*c
@@ -283,9 +286,9 @@ class Lidar:
     #             if use_outer_line : outer_line.pos[angle]=( dist_x, 0, dist_y)
 
     def get_image(self):
-    """
-    Returns the current lidar buffer
-    """
+        """
+        Returns the current lidar buffer
+        """
         lidarOut = []
         
         with self.buffer_filled:
