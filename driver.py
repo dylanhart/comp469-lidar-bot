@@ -19,7 +19,9 @@ class LidarBot(PiBorgBot):
         self.lidar = __import__(config['LIDAR_MODULE']).Lidar()
 
     def update(self):
-        decision = self.ai.decide(self, self.lidar.get_image(), self.map)
+        image = self.lidar.get_image()
+        distances = [d[0] for d in image]
+        decision = self.ai.decide(self, distances, self.map)
         print(repr(decision))
 
         speed = decision['speed']

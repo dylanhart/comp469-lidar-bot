@@ -3,6 +3,7 @@ import sdl2
 import sdl2.ext
 import ctypes
 import math
+import time
 import numpy as np
 
 def map_value(value, in_min, in_max, out_min, out_max):
@@ -26,7 +27,7 @@ def view(x, y, w, h):
                      [0,       0,       1/2, 0],
                      [x+(w/2), y+(h/2), 1/2, 1]])
 
-MAX_DIST = 1828.8
+MAX_DIST = 6000.0
 
 class LidarVisualizer:
     
@@ -34,7 +35,7 @@ class LidarVisualizer:
         
         self.lidar = lidar
         
-        self.projection = perspective(-MAX_DIST, MAX_DIST, -win_h/2, -win_h/2, 5/MAX_DIST, 1.0)
+        self.projection = perspective(-MAX_DIST, MAX_DIST, win_h/2, -win_h/2, 5/MAX_DIST, 1.0)
         self.viewport = view(0, 0, win_w, win_h)
         
         self.height = win_h
@@ -53,8 +54,8 @@ class LidarVisualizer:
         self.raw_data = distances
         self.points = []
         for i in range(len(distances)):
-            c = -math.cos(math.PI * i / 180)
-            s = -math.sin(math.PI * i / 180)
+            c = -math.cos(math.pi * i / 180)
+            s = -math.sin(math.pi * i / 180)
             
             x = c * (distances[i][0] / MAX_DIST)
             z = s * (distances[i][0] / MAX_DIST)
@@ -65,9 +66,13 @@ class LidarVisualizer:
             self.points.append(ceiling)
     
     def graph_dists(self, surface, dists, colors):
-        pix_view = sdl2.ext.pixels2D(surface)
-        for i in range(len(dists))
-           pix_view[self.height - dists[i] - 1][i] = colors[i]
+        white = sdl2.ext.Color(255, 255, 255)
+        sdl2.ext.fill(surface, white)
+        
+        pix_view = sdl2.ext.pixels2d(surface)
+        
+        for i in range(len(dists)):
+           pix_view[i][self.height - dists[i] - 1] = colors[i]
 
     def draw_raw(self):
         dists = [d[0] for d in self.raw_data]
@@ -82,35 +87,37 @@ class LidarVisualizer:
             
             gray = dists[i] / MAX_DIST
             r = r * gray
-            g = g * gray
+            g = gray
             b = b * gray
             
-            color = sdl.ext.Color(int(255 * r), int(255 * g), int(255 * b))
+            color = sdl2.ext.Color(int(255 * r), int(255 * g), int(255 * b))
             colors.append(color)
             dists[i] = int(self.height * dists[i]/MAX_DIST)
         
-        win_surf = sdl2.SDL_GetWindowSurface(self.window)
+        win_surf = self.window.get_surface()
         self.graph_dists(win_surf, dists, colors)
             
     
     def draw_3D(self):
         pass
-            
+        
     def run(self):
         
         event = sdl2.SDL_Event()
         while self.running:
+            #time.sleep(0.00001)
             self.update_data(self.lidar.get_image())
-            while SDL_PollEvent(ctypes.byref(event)) != 0:
-                if event.type == SDL_QUIT:
+            while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
+                if event.type == sdl2.SDL_QUIT:
                     self.running = False
                     break
-'               
-                if self.mode == 0:
-                    self.draw_raw()
+                
+            print("Drawing...")
+            if self.mode == 0:
+                self.draw_raw()
             
-            sdl2.SDL_UpdateWindowSurface(self.window)
+            print("Refreshing...")
+            self.window.refresh()
         
-        sdl2.SDL_DestroyWindow(window)
         sdl2.SDL_Quit()
         return 0
