@@ -28,7 +28,10 @@ class AI:
         # evaluate the "volume" of obstacles on the left vs. right and select the direction minimizing the
         # the chance for a collision
         # if min(fl) * np.average(fl) ** 0.5 > min(fr) * np.average(fr) ** 0.5:
-        if sqrt(min(fl) * np.average(fl)) > sqrt(min(fr) * np.average(fr)):
+        if min(min(fl), min(fr)) > 100:
+            angle = 0
+            speed = .5
+        elif sqrt(min(fl) * np.average(fl)) > sqrt(min(fr) * np.average(fr)):
             angle = -1
             message += 'left'
         else:
@@ -39,7 +42,7 @@ class AI:
         # first, calculate the "front" quarter of the LIDAR image
         front = image[3 * mid // 4: 5 * mid // 4]
         # consider the closest obstacle in the front as the guideline for the speed
-        speed = pow(min(front) / np.average(image), 2)
+        # speed = pow(min(front) / np.average(image), 2)
         message += '\nspeed:{:2.0f}'.format(speed * 100)
 
         return {'angle': angle, 'speed': speed, 'quote': message}
