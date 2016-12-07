@@ -27,7 +27,18 @@ def view(x, y, w, h):
                      [0,       0,       1/2, 0],
                      [x+(w/2), y+(h/2), 1/2, 1]])
 
+def round(value):
+    frac = value - int(value)
+    if frac >= 0.5:
+        return int(value) + 1
+    else:
+        return int(value)
+
 MAX_DIST = 6000.0
+
+RAW = 0
+POLAR = 1
+THREE_DIM = 2
 
 class LidarVisualizer:
     
@@ -44,7 +55,7 @@ class LidarVisualizer:
         self.points = []
 
         self.running = True
-        self.mode = 0
+        self.mode = POLAR
         
         sdl2.ext.init()
         self.window = sdl2.ext.Window("LIDAR Visualizer", size=(win_w, win_h))
@@ -52,18 +63,7 @@ class LidarVisualizer:
 
     def update_data(self, distances):
         self.raw_data = distances
-        self.points = []
-        for i in range(len(distances)):
-            c = -math.cos(math.pi * i / 180)
-            s = -math.sin(math.pi * i / 180)
-            
-            x = c * (distances[i][0] / MAX_DIST)
-            z = s * (distances[i][0] / MAX_DIST)
-            
-            ground = np.array([x, 0, z, 1])
-            ceiling = np.array([x, self.height, z, 1])
-            self.points.append(ground)
-            self.points.append(ceiling)
+    
     
     def graph_dists(self, surface, dists, colors):
         white = sdl2.ext.Color(255, 255, 255)
@@ -82,12 +82,12 @@ class LidarVisualizer:
         
         for i in range(len(self.raw_data)):
             r = float(max_qual - quals[i]) / max_qual
-            g = 1.0
-            b = float(quals[i])/max_qual
+            g = float(quals[i])/max_qual
+            b = 1.0
             
             gray = dists[i] / MAX_DIST
             r = r * gray
-            g = gray
+            g = g * gray
             b = b * gray
             
             color = sdl2.ext.Color(int(255 * r), int(255 * g), int(255 * b))
@@ -96,7 +96,53 @@ class LidarVisualizer:
         
         win_surf = self.window.get_surface()
         self.graph_dists(win_surf, dists, colors)
+        
+    def draw_polar(self):
+        dists = [d[0] for d in self.raw_data]
+        quals = [q[0] for q in self.raw_data]
+
+        max_qual = max(quals)
+
+        coords = []
+        colors = []
+        
+        for i in range(len(self.raw_data)):
+            c = -math.cos(math.pi * i / 180)
+            s = -math.sin(math.pi * i / 180)
             
+            x = (c * dists[i]) / MAX_DIST
+            z = (s * dists[i]) / MAX_DIST
+            
+            r = float(max_qual - quals[i]) / max_qual
+            g = float(quals[i])/max_qual
+            b = 1.0
+            
+            gray = 1.0 - (dists[i] / MAX_DIST)
+            r = r * gray
+            g = g * gray
+            b = gray
+            
+            color = sdl2.ext.Color(int(255 * r), int(255 * g), int(255 * b))
+            colors.append(color)
+            
+            #transform to screen space
+            point = (np.array([x, z, 0, 1]) * self.viewport).A1
+            point = [int(point[0]), self.height - int(point[1])]
+            
+            coords.append(point)
+        
+        win_surf = self.window.get_surface()
+        
+        white = sdl2.ext.Color(255, 255, 255)
+        sdl2.ext.fill(win_surf, white)
+        
+        pix_view = sdl2.ext.pixels2d(win_surf)
+        for i in range(len(coords)):
+            color = colors[i]
+            pixel_x = coords[i][0]
+            pixel_y = coords[i][1]
+            pix_view[coords[i][1]][coords[i][0]] = color
+        
     
     def draw_3D(self):
         pass
@@ -112,9 +158,12 @@ class LidarVisualizer:
                     self.running = False
                     break
                 
+                
             print("Drawing...")
-            if self.mode == 0:
+            if self.mode == RAW:
                 self.draw_raw()
+            elif self.mode == POLAR:
+                self.draw_polar()
             
             print("Refreshing...")
             self.window.refresh()
