@@ -38,11 +38,11 @@ class AI:
             angle = 0
             speed = .5
         elif np.average(fl) > np.average(fr):
-            angle = 1
+            angle = .75
             speed = 0
             message += 'left'
         else:
-            angle = -1
+            angle = -.75
             speed = 0
             message += 'right'
 
