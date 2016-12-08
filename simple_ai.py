@@ -34,15 +34,15 @@ class AI:
         d_max = max(f)
         print(d_min, d_avg, d_max)
 
-        if d_avg > 200:
+        if min(d_avg, np.average(fl), np.average(fr)) > 200:
             angle = 0
             speed = .5
         elif np.average(fl) > np.average(fr):
-            angle = -1
+            angle = 1
             speed = 0
             message += 'left'
         else:
-            angle = 1
+            angle = -1
             speed = 0
             message += 'right'
 
