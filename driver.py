@@ -20,7 +20,14 @@ class LidarBot(PiBorgBot):
 
     def update(self):
         image = self.lidar.get_image()
-        distances = [d[0] for d in image]
+
+        try:
+            distances = [d[0] for d in image]
+        except IndexError: 
+            print('bad data')
+            self.drive(0, 0)
+            return
+
         decision = self.ai.decide(self, distances, self.map)
         print(repr(decision))
 
@@ -55,3 +62,4 @@ def arcade(speed, angle):
         else:
             left = speed - angle
             right = -max(-speed, -angle)
+    return left, right
