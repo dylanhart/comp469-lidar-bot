@@ -18,7 +18,7 @@ class AI:
 
         # choose left or right, whatever has most distant obstacles
         mid = len(image) // 2
-        f = image[mid//2:mid + mid//2]
+        f = image[3*mid//4:5*mid//4]
         l = image[:mid]  # left side of the bot
         r = image[mid:]  # right side of the bot
         fl = image[mid // 2:mid]  # front left quarter
@@ -34,7 +34,7 @@ class AI:
         d_max = max(f)
         print(d_min, d_avg, d_max)
 
-        if d_min > 100:
+        if d_avg > 200:
             angle = 0
             speed = .5
         elif sqrt(min(fl) * np.average(fl)) > sqrt(min(fr) * np.average(fr)):
