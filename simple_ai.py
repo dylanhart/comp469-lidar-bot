@@ -18,6 +18,7 @@ class AI:
 
         # choose left or right, whatever has most distant obstacles
         mid = len(image) // 2
+        f = image[mid//2:mid + mid//2]
         l = image[:mid]  # left side of the bot
         r = image[mid:]  # right side of the bot
         fl = image[mid // 2:mid]  # front left quarter
@@ -28,14 +29,21 @@ class AI:
         # evaluate the "volume" of obstacles on the left vs. right and select the direction minimizing the
         # the chance for a collision
         # if min(fl) * np.average(fl) ** 0.5 > min(fr) * np.average(fr) ** 0.5:
-        if min(min(fl), min(fr)) > 100:
+        d_min = min(f)
+        d_avg = np.average(f)
+        d_max = max(f)
+        print(d_min, d_avg, d_max)
+
+        if d_min > 100:
             angle = 0
             speed = .5
         elif sqrt(min(fl) * np.average(fl)) > sqrt(min(fr) * np.average(fr)):
             angle = -1
+            speed = 0
             message += 'left'
         else:
             angle = 1
+            speed = 0
             message += 'right'
 
         # determine "safe" speed
