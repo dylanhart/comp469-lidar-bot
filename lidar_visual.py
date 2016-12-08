@@ -58,7 +58,7 @@ class LidarVisualizer:
         self.depth_buf = [[MAX_DIST-1] * self.width] * self.height
 
         self.running = True
-        self.mode = POLAR
+        self.mode = EUCLID_3D
         
         sdl2.ext.init()
         self.window = sdl2.ext.Window("LIDAR Visualizer", size=(win_w, win_h))
@@ -156,11 +156,14 @@ class LidarVisualizer:
         colors = []
         
         for i in range(len(self.raw_data)):
-            c = -math.cos(math.pi * i / 180)
-            s = -math.sin(math.pi * i / 180)
+            c = math.cos(math.pi * i / 180)
+            s = math.sin(math.pi * i / 180)
             
             x = c * dists[i]
             z = s * dists[i]
+             
+            if(z <= 0.0):
+                continue
             
             r = float(max_qual - quals[i]) / max_qual
             g = float(quals[i])/max_qual
@@ -171,11 +174,17 @@ class LidarVisualizer:
             g = g * gray
             b = gray
             
-            color = sdl2.ext.Color(int(255 * r), int(255 * g), int(255 * b))
+            color = sdl2.ext.Color(0, 0, 0)
             colors.append(color)
             
-            floor = (np.array([x, -self.height/2.0, z, 1]) * self.projection * self.viewport).A1
-            ceil = (np.array([x, self.height/2.0, z, 1]) * self.projection * self.viewport).A1
+            floor = (np.array([x, -self.height/2.0, z, 1]) * self.projection).A1
+            ceil = (np.array([x, self.height/2.0, z, 1]) * self.projection).A1
+            
+            floor = floor/floor[3]
+            ceil = ceil/ceil[3]
+            
+            floor = (floor * self.viewport).A1
+            ceil = (ceil * self.viewport).A1
             
             floor = np.array([int(floor[0]), int(floor[1]), int(floor[2])])
             ceil = np.array([int(ceil[0]), int(ceil[1]), int(ceil[2])])
@@ -202,11 +211,21 @@ class LidarVisualizer:
                     y = y + 1
                 
     def refresh(self):
+        event = sdl2.SDL_Event()
         self.update_data(self.lidar.get_image())
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             if event.type == sdl2.SDL_QUIT:
                 self.running = False
                 break
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_ESCAPE:
+                    self.running = False
+                elif event.key.keysym.sym == sdl2.SDLK_1:
+                    self.mode = RAW
+                elif event.key.keysym.sym == sdl2.SDLK_2:
+                    self.mode = POLAR
+                elif event.key.keysym.sym == sdl2.SDLK_3:
+                    self.mode = EUCLID_3D
                 
         print("Drawing...")
         if self.mode == RAW:
@@ -221,9 +240,8 @@ class LidarVisualizer:
     
     def run(self):
         
-        event = sdl2.SDL_Event()
         while self.running:
-            
+            self.refresh()
         
         sdl2.SDL_Quit()
         return 0
