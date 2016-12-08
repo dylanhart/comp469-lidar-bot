@@ -19,8 +19,8 @@ class AI:
         # choose left or right, whatever has most distant obstacles
         mid = len(image) // 2
         f = image[3*mid//4:5*mid//4]
-        l = image[:mid]  # left side of the bot
-        r = image[mid:]  # right side of the bot
+        l = image[mid//4:mid]  # left side of the bot
+        r = image[mid:7*mid//4]  # right side of the bot
         fl = image[mid // 2:mid]  # front left quarter
         fr = image[mid:mid + mid // 2]  # front right quarter
         bl = image[:mid // 2]  # back left quarter
