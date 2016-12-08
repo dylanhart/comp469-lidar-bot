@@ -38,7 +38,7 @@ class AI:
         fr_avg = np.average(fr)
         print(d_min, d_avg, d_max)
 
-        if min(d_avg, np.average(fl), np.average(fr)) > 150:
+        if min(d_avg, np.average(fl), np.average(fr)) > 175:
             # angle = (fl_avg - fr_avg) / max(fl_avg, fr_avg)
             angle = ((l_avg - r_avg) / max(l_avg, r_avg))**2
             speed = .5
