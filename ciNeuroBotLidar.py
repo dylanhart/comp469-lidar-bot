@@ -232,16 +232,19 @@ class Lidar:
         c = math.cos(angle_rad)
         s = -math.sin(angle_rad)
         
+        dist_mm = data[0] | ((data[1] & 0x3f) << 8)  # remove the flags
+        quality = data[2] | (data[3] << 8)  # quality is on 16 bits
+        
         dist_calc_error = (data[1] & 0x80) > 0  # check bit 7 flag
-        #if dist_calc_error:
+        if dist_calc_error:
+            dist_mm = 0
+            quality = 0
             #print("distance calculation error: {0}\n".format(data[0]))  # error code in data[0]
         
         inferior_signal = (data[1] & 0x40) > 0  # check bit 6 flag
-        #if inferior_signal:
+        if inferior_signal:
+            quality = 0
             #print("inferior signal\n")
-        
-        dist_mm = data[0] | ((data[1] & 0x3f) << 8)  # remove the flags
-        quality = data[2] | (data[3] << 8)  # quality is on 16 bits
         
         #quality = int.from_bytes(data[2:4], 'big')
         
