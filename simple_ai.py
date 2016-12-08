@@ -37,7 +37,7 @@ class AI:
         if d_avg > 200:
             angle = 0
             speed = .5
-        elif sqrt(min(fl) * np.average(fl)) > sqrt(min(fr) * np.average(fr)):
+        elif np.average(fl) > np.average(fr):
             angle = -1
             speed = 0
             message += 'left'
