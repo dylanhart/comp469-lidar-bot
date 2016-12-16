@@ -38,4 +38,51 @@ $ python3 main.py
 
 The robot may be stopped with `Ctrl-C`.
 
+## Visualization
 
+A separate process for visualization can be started to view a visualization of the data being seen by the LiDAR.
+
+This visualization process has five different rendering modes to view the data in different ways for debugging purposes.
+
+#### Raw
+
+![Raw plotting](/images/RawPlotting.png)
+
+Select this mode with the 1 key to view raw output from the lidar-reading module.
+
+
+#### 2D
+
+![2D plotting](/images/PolarPlotting.png)
+
+Select this mode with the 2 key to get the points being read by LiDAR in polar coordinates.
+
+
+#### 3D Plotting
+
+![3D Point Plotting using Lines](/images/3DPointRendering.png)
+
+Select this mode with the 3 key to get the points being read by LiDAR projected into a 3D space, colored based on signal strength and distance. They are plotted as vertical lines which also scale with distance.
+
+
+#### 2D Wall Plotting
+
+![2D Wall Plotting](/images/PolarWallPlotting.png)
+
+Select this mode with the 4 key to filter points by quality and distance, assuring no points directly on the robot or with weak signals. The filtered points are then processed to find straight lines between them, assumed to be walls if there are more than two points in a line. The whole wall is extracted and rendered as a 2D line.
+
+
+#### 3D Wall Plotting
+
+![3D Wall Plotting](/images/3DWallPlotting.png)
+
+Select this mode with the 5 key to filter points and extract walls as in 2D wall plot mode. These points are instead transformed into 3D quadrilaterals and filled to render. These are colored by the distance of the midpoint of the wall.
+
+
+To quit, press the X in the top corner (left or right depending on OS), or press ESC.
+
+This process can be run with
+
+```
+$ python3 lidar_draw.py
+```

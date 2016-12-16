@@ -16,10 +16,10 @@ def perspective(left, right, top, bottom, near, far):
     width = right - left
     height = top - bottom
     depth = far-near
-    return np.matrix([[2*near/width,      0,                   0,                   0],
-                     [0,                  2*near/height,       0,                   0],
-                     [(right+left)/width, (top+bottom)/height, -(far+near)/depth,  -1],
-                     [0,                  0,                   -(2*far*near)/depth, 0]])
+    return np.matrix([[(2*near)/width, 0,             (right+left)/width,                    0],
+                     [0,             (2*near)/height, (top+bottom)/height,                   0],
+                     [0,             0,               -(far+near)/depth,   -(2*far*near)/depth],
+                     [0,             0,               -1,                                   0]])
 
 #returns an OpenGL-style viewport matrix to map 4D points to 3D screenspace- column major
 def view(x, y, w, h):
@@ -49,7 +49,7 @@ class LidarVisualizer:
         
         self.lidar = lidar
         
-        self.projection = perspective(-win_w/8, win_w/8, win_h/4, -win_h/4, 1, MAX_DIST)
+        self.projection = perspective(-win_w/32, win_w/32, win_h/16, -win_h/16, 1, 6000)
         self.viewport = view(0, 0, win_w, win_h)
         
         self.height = win_h
@@ -201,20 +201,17 @@ class LidarVisualizer:
         black = sdl2.ext.Color(0, 0, 0)
         sdl2.ext.fill(win_surf, black)
         
-        pix_view = sdl2.ext.pixels2d(win_surf)
         for i in range(len(coords)):
-            x = coords[i][0][0]
-            y = coords[i][0][1]
+            x1 = coords[i][0][0]
+            y1 = coords[i][0][1]
+            x2 = coords[i][1][0]
+            y2 = coords[i][1][1]
             
             if x < 0 or x > self.width:
                 continue
             
-            color = colors[i]
-
-            while y < coords[i][1][1]:
-                if y > 0 and y < self.height:
-                    pix_view[x][y] = color
-                y = y + 1
+            values = (x1, y1, x2, y2)
+            sdl2.ext.line(win_surf, colors[i], values)
     
     def filtered_points(self):
         dist_filtered = [d for d in enumerate(self.raw_data) if d[1][0] >= 150] #ignore things still on the robot
@@ -302,8 +299,7 @@ class LidarVisualizer:
         dx = floor[1][0] - floor[0][0]
         dy_floor = floor[1][1] - floor[0][1]
         dy_ceil = ceil[1][1] - ceil[0][1]
-        
-        
+                
         derr_floor = abs(dy_floor) * 2
         derr_ceil = abs(dy_ceil) * 2
         
@@ -314,25 +310,23 @@ class LidarVisualizer:
         y_floor = floor[0][1]
         x = floor[0][0]
         
-        print("dx: ", dx, "\ndy_floor: ", dy_floor, "\ndy_ceil: ", dy_ceil, "\nx: ", x, "\ny_ceil: ", y_ceil, "\ny_floor: ", y_floor, "\n")
-        
-        while x < floor[1][0]:
+        while x < floor[1][0] and y_floor < y_ceil:
             
             if 0 < x < self.width:
                 values = (self.width - x, y_floor, self.width - x, y_ceil)
                 sdl2.ext.line(surf, color, values)
-                self.window.refresh()
-                time.sleep(0.00125)
             
             err_floor += derr_floor
             err_ceil += derr_ceil
             
             if err_floor > dx:
-                y_floor += 1 if (floor[1][1] > floor[0][1]) else -1
+                adjustment = 1 if (floor[1][1] > floor[0][1]) else -1
+                y_floor += adjustment
                 err_floor -= dx * 2
             
             if err_ceil > dx:
-                y_ceil += 1 if (ceil[1][1] > ceil[0][1]) else -1
+                adjustment = 1 if (ceil[1][1] > ceil[0][1]) else -1
+                y_ceil += adjustment
                 err_ceil -= dx * 2
             
             x += 1
@@ -356,8 +350,17 @@ class LidarVisualizer:
             x_e = w.end[0]
             z_e = w.end[1]
             
-            if (z_s < 0 and z_e < 0) or (x_s < 0 and x_e < 0) or (x_s > self.width and x_e > self.width):
+            if (z_s < 0 and z_e < 0):
                 continue
+            
+            #set up quad polygon
+            points = []
+            points.append(np.array([x_s, self.height, z_s, 1]))
+            points.append(np.array([x_s, -self.height, z_s, 1]))
+            points.append(np.array([x_e, self.height, z_e, 1]))
+            points.append(np.array([x_e, -self.height, z_e, 1]))
+            
+            #print("Points: \n\t", points, "\n")
             
             #calculate color as a gray based on distance of the midpoint of the wall from the LIDAR
             v = w.start + ((w.end - w.start)/2.0)
@@ -370,42 +373,23 @@ class LidarVisualizer:
             color = sdl2.ext.Color(int(255 * r), int(255 * g), int(255 * b))
             colors.append(color)
             
-            #set up quad polygon
-            start_floor = np.array([x_s, self.height, z_s, 1])
-            start_ceil = np.array([x_s, -self.height, z_s, 1])
+            for i in range(4):
+                #project into clip space
+                points[i] = (points[i] * self.projection).A1
+                
+                #do normalized device coordinate division
+                points[i] = points[i]/points[i][3]
+                
+                #transform into screen space
+                points[i] = (points[i] * self.viewport).A1
+                
+                #take the 2D coordinates
+                points[i] = np.array([int(points[i][0]), int(points[i][1])])
             
-            end_floor = np.array([x_e, self.height, z_e, 1])
-            end_ceil = np.array([x_e, -self.height, z_e, 1])
-            
-            #project into clip space
-            start_floor = (start_floor * self.projection).A1
-            start_ceil = (start_ceil * self.projection).A1
-            
-            end_floor = (end_floor * self.projection).A1
-            end_ceil = (end_ceil * self.projection).A1
-            
-            #do normalized device coordinate division
-            start_floor = start_floor/start_floor[3]
-            start_ceil = start_ceil/start_ceil[3]
-            
-            end_floor = end_floor/end_floor[3]
-            end_ceil = end_ceil/end_ceil[3]
-            
-            #transform into screen space
-            start_floor = (start_floor * self.viewport).A1
-            start_ceil = (start_ceil * self.viewport).A1
-            
-            end_floor = (end_floor * self.viewport).A1
-            end_ceil = (end_ceil * self.viewport).A1
-            
-            #take the 2D coordinates
-            start_floor = np.array([int(start_floor[0]), int(start_floor[1])])
-            start_ceil = np.array([int(start_ceil[0]), int(start_ceil[1])])
-            end_floor = np.array([int(end_floor[0]), int(end_floor[1])])
-            end_ceil = np.array([int(end_ceil[0]), int(end_ceil[1])])
+            #print("Transformed Points: \n\t", points, "\n\n")
             
             #add to quad list
-            quads.append([start_floor, start_ceil, end_floor, end_ceil])
+            quads.append(points)
             
         win_surf = self.window.get_surface()
         
@@ -414,10 +398,7 @@ class LidarVisualizer:
         
         for i in range(len(quads)):
             self.fill_quad(win_surf, quads[i], colors[i])
-            self.window.refresh()
-            sdl2.ext.fill(win_surf, black)
-            time.sleep(0.25)
-        
+    
     def refresh(self):
         event = sdl2.SDL_Event()
         self.update_data(self.lidar.get_image())
