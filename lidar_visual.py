@@ -16,10 +16,10 @@ def perspective(left, right, top, bottom, near, far):
     width = right - left
     height = top - bottom
     depth = far-near
-    return np.matrix([[2*near/width, 0,             (right+left)/width,                  0],
-                     [0,             2*near/height, (top+bottom)/height,                 0],
-                     [0,             0,             -(far+near)/depth, -(2*far*near)/depth],
-                     [0,             0,             -1,                                 0]])
+    return np.matrix([[2*near/width,      0,                   0,                   0],
+                     [0,                  2*near/height,       0,                   0],
+                     [(right+left)/width, (top+bottom)/height, -(far+near)/depth,  -1],
+                     [0,                  0,                   -(2*far*near)/depth, 0]])
 
 #returns an OpenGL-style viewport matrix to map 4D points to 3D screenspace- column major
 def view(x, y, w, h):
@@ -80,6 +80,8 @@ class LidarVisualizer:
         dists = [d[0] for d in self.raw_data]
         quals = [q[1] for q in self.raw_data]
         colors = []
+        
+        max_dist = max(dists)
         max_qual = max(quals)
         
         for i in range(len(self.raw_data)):
@@ -87,7 +89,7 @@ class LidarVisualizer:
             g = float(quals[i])/max_qual
             b = 1.0
             
-            gray = dists[i] / MAX_DIST
+            gray = dists[i] / max_dist
             r = r * gray
             g = g * gray
             b = b * gray
@@ -103,6 +105,7 @@ class LidarVisualizer:
         dists = [d[0] for d in self.raw_data]
         quals = [q[1] for q in self.raw_data]
 
+        max_dist = max(dists)
         max_qual = max(quals)
 
         coords = []
@@ -119,7 +122,7 @@ class LidarVisualizer:
             g = float(quals[i])/max_qual
             b = 1.0
             
-            gray = 1.0 - (dists[i] / MAX_DIST)
+            gray = 1.0 - (dists[i] / max_dist)
             r = r * gray
             g = g * gray
             b = gray
@@ -150,7 +153,8 @@ class LidarVisualizer:
         dists = [d[0] for d in self.raw_data]
         quals = [q[1] for q in self.raw_data]
         dists = dists[90:270]
-
+        
+        max_dist = max(dists)
         max_qual = max(quals)
 
         coords = []
@@ -170,12 +174,12 @@ class LidarVisualizer:
             g = float(quals[i])/max_qual
             b = 1.0
             
-            gray = 1.0 - (dists[i] / MAX_DIST)
+            gray = 1.0 - (dists[i] / max_dist)
             r = r * gray
             g = g * gray
             b = gray
             
-            color = sdl2.ext.Color(0, 0, 0)
+            color = sdl2.ext.Color(int(255*r), int(255*g), int(255*b))
             colors.append(color)
             
             floor = (np.array([x, self.height, z, 1]) * self.projection).A1
@@ -202,6 +206,9 @@ class LidarVisualizer:
             x = coords[i][0][0]
             y = coords[i][0][1]
             
+            if x < 0 or x > self.width:
+                continue
+            
             color = colors[i]
 
             while y < coords[i][1][1]:
@@ -220,6 +227,7 @@ class LidarVisualizer:
         dists = [d[1][0] for d in points]
         quals = [q[1][1] for q in points]
         
+        max_dist = max(dists)
         max_qual = max(quals)
         
         coords = []
@@ -236,7 +244,7 @@ class LidarVisualizer:
             g = float(quals[i])/max_qual
             b = 1.0
             
-            gray = 1.0 - (dists[i] / MAX_DIST)
+            gray = 1.0 - (dists[i] / max_dist)
             r = r * gray
             g = g * gray
             b = gray
@@ -262,67 +270,8 @@ class LidarVisualizer:
             pixel_y = coords[i][1]
             pix_view[pixel_y][pixel_x] = color
     
-    def find_walls(self):
-        filtered = self.filtered_points()
-        angles = [a[0] for a in filtered]
-        distances = [d[1] for d in filtered]
-        dists = [d[0] for d in distances]
-        quals = [q[1] for q in distances]
-        points = []
-        
-        for i in range(len(dists)):
-            c = math.cos(math.pi * angles[i] / 180)
-            s = math.sin(math.pi * angles[i] / 180)
-            
-            x = (c * dists[i])
-            z = (s * dists[i])
-            
-            points.append(np.array([x, z]))
-
-        walls = []
-        
-        i = 0
-
-        while (i+1) < len(points):
-            j = i + 1
-            wall_dists = []
-            wall_angles = []
-            
-            angle = 180 * math.atan2(points[j][1] - points[i][1], points[j][0] - points[i][0]) / math.pi
-            
-            k = i - 1
-            l = k + 1
-            running_angle = 180 * math.atan2(points[k][1] - points[l][1], points[k][0] - points[l][0]) / math.pi
-            
-            while ((l-1) > -len(points)) and (-15 < running_angle - angle < 15):
-                wall_dists.append([dists[k], quals[k]])
-                wall_angles.append(angles[l])
-                k = k - 1
-                l = k - 1
-                running_angle = 180 * math.atan2(points[k][1] - points[l][1], points[k][0] - points[l][0]) / math.pi
-            
-            wall_dists.reverse()
-            wall_angles.reverse()
-            
-            running_angle = 180 * math.atan2(points[j][1] - points[i][1], points[j][0] - points[i][0]) / math.pi
-            
-            while ((j+1) < len(points)) and (-15 < running_angle - angle < 15):
-                wall_dists.append([dists[j], quals[j]])
-                wall_angles.append(angles[i])
-                j = j + 1
-                i = j - 1
-                running_angle = 180 * math.atan2(points[j][1] - points[i][1], points[j][0] - points[i][0]) / math.pi
-            
-            if(len(wall_dists) > 2):
-                w = wall.Wall(wall_dists, wall_angles)
-                walls.append(w)
-            
-            i = i + 1
-        
-        return walls
-    
     def draw_pretty_polar(self):
-        walls = self.find_walls()
+        walls = wall.find_walls(self.filtered_points())
         win_surf = self.window.get_surface()
         
         white = sdl2.ext.Color(255, 255, 255)
@@ -340,11 +289,138 @@ class LidarVisualizer:
             
             values = (start[0], start[1], end[0], end[1])
             sdl2.ext.line(win_surf, white, values)
+    
+    def fill_quad(self, surf, quad, color):
+        floor = (quad[0], quad[2])
+        ceil = (quad[1], quad[3])
+        
+        #swap if the start is on the right
+        if(floor[1][0] < floor[0][0]):
+            floor = (floor[1], floor[0])
+            ceil = (ceil[1], ceil[0])
+        
+        dx = floor[1][0] - floor[0][0]
+        dy_floor = floor[1][1] - floor[0][1]
+        dy_ceil = ceil[1][1] - ceil[0][1]
+        
+        
+        derr_floor = abs(dy_floor) * 2
+        derr_ceil = abs(dy_ceil) * 2
+        
+        err_floor = 0
+        err_ceil = 0
+        
+        y_ceil = ceil[0][1]
+        y_floor = floor[0][1]
+        x = floor[0][0]
+        
+        print("dx: ", dx, "\ndy_floor: ", dy_floor, "\ndy_ceil: ", dy_ceil, "\nx: ", x, "\ny_ceil: ", y_ceil, "\ny_floor: ", y_floor, "\n")
+        
+        while x < floor[1][0]:
+            
+            if 0 < x < self.width:
+                values = (self.width - x, y_floor, self.width - x, y_ceil)
+                sdl2.ext.line(surf, color, values)
+                self.window.refresh()
+                time.sleep(0.00125)
+            
+            err_floor += derr_floor
+            err_ceil += derr_ceil
+            
+            if err_floor > dx:
+                y_floor += 1 if (floor[1][1] > floor[0][1]) else -1
+                err_floor -= dx * 2
+            
+            if err_ceil > dx:
+                y_ceil += 1 if (ceil[1][1] > ceil[0][1]) else -1
+                err_ceil -= dx * 2
+            
+            x += 1
+    
+    def draw_pretty_3D(self):
+        filtered = self.filtered_points()
+        
+        max_dist = max([d[1][0] for d in filtered])
+        max_qual = max([q[1][1] for q in filtered])
+        
+        walls = wall.find_walls(filtered)
+        
+        quads = []
+        colors = []
+        
+        for w in walls:
+            
+            x_s = w.start[0]
+            z_s = w.start[1]
+            
+            x_e = w.end[0]
+            z_e = w.end[1]
+            
+            if (z_s < 0 and z_e < 0) or (x_s < 0 and x_e < 0) or (x_s > self.width and x_e > self.width):
+                continue
+            
+            #calculate color as a gray based on distance of the midpoint of the wall from the LIDAR
+            v = w.start + ((w.end - w.start)/2.0)
+            distance = math.sqrt(np.dot(v, v))
+            
+            r = (distance / max_dist)
+            g = 0.3 + (0.7 * (1.0 - (distance / max_dist)))
+            b = 1.0 - (distance / max_dist)
+            
+            color = sdl2.ext.Color(int(255 * r), int(255 * g), int(255 * b))
+            colors.append(color)
+            
+            #set up quad polygon
+            start_floor = np.array([x_s, self.height, z_s, 1])
+            start_ceil = np.array([x_s, -self.height, z_s, 1])
+            
+            end_floor = np.array([x_e, self.height, z_e, 1])
+            end_ceil = np.array([x_e, -self.height, z_e, 1])
+            
+            #project into clip space
+            start_floor = (start_floor * self.projection).A1
+            start_ceil = (start_ceil * self.projection).A1
+            
+            end_floor = (end_floor * self.projection).A1
+            end_ceil = (end_ceil * self.projection).A1
+            
+            #do normalized device coordinate division
+            start_floor = start_floor/start_floor[3]
+            start_ceil = start_ceil/start_ceil[3]
+            
+            end_floor = end_floor/end_floor[3]
+            end_ceil = end_ceil/end_ceil[3]
+            
+            #transform into screen space
+            start_floor = (start_floor * self.viewport).A1
+            start_ceil = (start_ceil * self.viewport).A1
+            
+            end_floor = (end_floor * self.viewport).A1
+            end_ceil = (end_ceil * self.viewport).A1
+            
+            #take the 2D coordinates
+            start_floor = np.array([int(start_floor[0]), int(start_floor[1])])
+            start_ceil = np.array([int(start_ceil[0]), int(start_ceil[1])])
+            end_floor = np.array([int(end_floor[0]), int(end_floor[1])])
+            end_ceil = np.array([int(end_ceil[0]), int(end_ceil[1])])
+            
+            #add to quad list
+            quads.append([start_floor, start_ceil, end_floor, end_ceil])
+            
+        win_surf = self.window.get_surface()
+        
+        black = sdl2.ext.Color(0, 0, 0)
+        sdl2.ext.fill(win_surf, black)
+        
+        for i in range(len(quads)):
+            self.fill_quad(win_surf, quads[i], colors[i])
+            self.window.refresh()
+            sdl2.ext.fill(win_surf, black)
+            time.sleep(0.25)
         
     def refresh(self):
         event = sdl2.SDL_Event()
         self.update_data(self.lidar.get_image())
-        walls = False
         while sdl2.SDL_PollEvent(ctypes.byref(event)) != 0:
             if event.type == sdl2.SDL_QUIT:
                 self.running = False
@@ -360,19 +436,19 @@ class LidarVisualizer:
                     self.mode = EUCLID_3D
                 elif event.key.keysym.sym == sdl2.SDLK_4:
                     self.mode = PRETTY_POLAR
-                elif self.mode == PRETTY_POLAR and event.key.keysym.sym == sdl2.SDLK_SPACE:
-                    walls = True
-                
+                elif event.key.keysym.sym == sdl2.SDLK_5:
+                    self.mode = PRETTY_3D
+                        
         if self.mode == RAW:
             self.draw_raw()
         elif self.mode == POLAR:
             self.draw_polar()
         elif self.mode == EUCLID_3D:
             self.draw_3D()
-        elif self.mode == PRETTY_POLAR and not walls:
+        elif self.mode == PRETTY_POLAR:
             self.draw_pretty_polar()
-        else:
-            self.draw_filtered_polar()
+        elif self.mode == PRETTY_3D:
+            self.draw_pretty_3D()
         
         self.window.refresh()
     

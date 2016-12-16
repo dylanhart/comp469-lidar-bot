@@ -2,6 +2,65 @@ import numpy as np
 from operator import itemgetter
 import math
 
+def find_walls(filtered):
+    angles = [a[0] for a in filtered]
+    distances = [d[1] for d in filtered]
+    dists = [d[0] for d in distances]
+    quals = [q[1] for q in distances]
+    points = []
+    
+    for i in range(len(dists)):
+        c = math.cos(math.pi * angles[i] / 180)
+        s = math.sin(math.pi * angles[i] / 180)
+        
+        x = (c * dists[i])
+        z = (s * dists[i])
+        
+        points.append(np.array([x, z]))
+    
+    walls = []
+    
+    i = 0
+    
+    while i < len(points) - 1:
+        j = i + 1
+        wall_dists = []
+        wall_angles = []
+        
+        angle = 180 * math.atan2(points[j][1] - points[i][1], points[j][0] - points[i][0]) / math.pi
+        
+        k = i - 1
+        l = k + 1
+
+        running_angle = 180 * math.atan2(points[l][1] - points[k][1], points[l][0] - points[k][0]) / math.pi
+        
+        while ((l-1) > -len(points)) and (-15 < running_angle - angle < 15):
+            wall_dists.append([dists[k], quals[k]])
+            wall_angles.append(angles[k])
+            k = k - 1
+            l = k + 1
+            running_angle = 180 * math.atan2(points[l][1] - points[k][1], points[l][0] - points[k][0]) / math.pi
+        
+        wall_dists.reverse()
+        wall_angles.reverse()
+        
+        running_angle = 180 * math.atan2(points[j][1] - points[i][1], points[j][0] - points[i][0]) / math.pi
+        
+        while ((j+1) < len(points)) and (-15 < running_angle - angle < 15):
+            wall_dists.append([dists[j], quals[j]])
+            wall_angles.append(angles[i])
+            j = j + 1
+            i = j - 1
+            running_angle = 180 * math.atan2(points[j][1] - points[i][1], points[j][0] - points[i][0]) / math.pi
+        
+        if(len(wall_dists) >= 2):
+            w = Wall(wall_dists, wall_angles)
+            walls.append(w)
+        
+        i = i + 1
+    
+    return walls
+
 class Wall:
     def __init__(self, distances, angles):
         dists = [d[0] for d in distances]
